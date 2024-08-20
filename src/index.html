@@ -2,11 +2,23 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Hello World!</title>
-
+    <title>Live Image Viewer</title>
   </head>
   <body>
-    <h1>💖 Hello World!</h1>
-    <p>Welcome to your Electron application.</p>
+    <div id="root">
+      <nav class="Infobar">
+        <!-- 
+        Shows the url to send request to to change the image data
+
+        http://localost:{port}/pixels
+        -->
+        <div class="EndpointDisplay"></div>
+
+        <div class="ImageNameDisplay"></div>
+
+        <div class="ImageSizeDisplay"></div>
+      </nav>
+      <main class="ImageViewer"></main>
+    </div>
   </body>
 </html>
