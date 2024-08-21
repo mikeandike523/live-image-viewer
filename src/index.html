@@ -6,17 +6,24 @@
   </head>
   <body>
     <div id="root">
-      <nav class="Infobar">
+      <div class="ImageNameDisplay">No Image</div>
+      <nav class="InfoBar">
         <!-- 
         Shows the url to send request to to change the image data
 
         http://localost:{port}/pixels
         -->
-        <div class="EndpointDisplay"></div>
+        <div class="EndpointDisplay">Determing endpoint...</div>
 
-        <div class="ImageNameDisplay"></div>
+        <div class="InfoBarDivider"></div>
 
-        <div class="ImageSizeDisplay"></div>
+        <div style="flex: 1;"></div>
+
+
+        <div class="InfoBarDivider"></div>
+
+
+        <div class="ImageSizeDisplay">0 &times; 0</div>
       </nav>
       <main class="ImageViewer"></main>
     </div>

@@ -1,4 +1,9 @@
+nav div {
+  box-sizing: border-box;
+}
+
 body {
+  font-family: sans-serif;
   margin: 0;
   padding: 0;
   width: 100vw;
@@ -7,11 +12,64 @@ body {
   box-sizing: border-box;
 }
 
-div.root {
+#root {
   margin: 0;
   padding: 0;
   width: 100vw;
   height: 100vh;
   overflow: auto;
   box-sizing: border-box;
+}
+
+.InfoBar {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-bottom: 2px solid black;
+  gap: 2px;
+  height: 48px;
+}
+
+.InfoBarDivider {
+  align-self: stretch;
+  width: 2px;
+  background-color: black;
+}
+
+.EndpointDisplay {
+  padding: 4px;
+  font-size: 14px;
+}
+
+.ImageNameDisplay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  height: 48px;
+  line-height: 48px;
+  font-size: 24px;
+  text-align: center;
+}
+
+.ImageSizeDisplay {
+  padding: 4px;
+  font-size: 14px;
+}
+
+.ImageViewer {
+  width: 100vw;
+  height: calc(100vh - 48px - 2px);
+  position: relative;
+  background-image: /* tint image */ linear-gradient(
+      to right,
+      rgba(192, 192, 192, 0.75),
+      rgba(192, 192, 192, 0.75)
+    ),
+    /* checkered effect */ linear-gradient(to right, black 50%, white 50%),
+    linear-gradient(to bottom, black 50%, white 50%);
+  background-blend-mode: normal, difference, normal;
+  background-size: 2em 2em;
 }

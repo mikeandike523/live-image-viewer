@@ -1,16 +1,21 @@
-import './index.css'
+import { IpcRendererEvent } from "electron";
+import "./index.css";
 
-import electron, { IpcMainEvent } from 'electron'
+const electron = window.require("electron");
 
-let expressPort: number
+console.log(electron.ipcRenderer, electron.ipcMain);
 
-function onExpressPortFound(event:IpcMainEvent, port:number){
-    expressPort = port
+function app() {
+  const elemInfoBar = document.querySelector(".InfoBar")!;
+  const elemEndpointDisplay = document.querySelector(".EndpointDisplay")!;
+  const elemImageNameDisplay = document.querySelector(".ImageNameDisplay")!;
+  const elemImageSizeDisplay = document.querySelector(".ImageSizeDisplay")!;
+
+  function onExpressPortFound(event: IpcRendererEvent, port: number) {
+    elemEndpointDisplay.textContent = `http://localhost:${port}/pixels`;
+  }
+
+  electron.ipcRenderer.on("express-port-found", onExpressPortFound);
 }
 
-
-// use ipc to bind action express-port-found
-electron.ipcMain.on('express-port-found', onExpressPortFound)
-
-
-
+document.addEventListener("DOMContentLoaded", app);
