@@ -63,6 +63,10 @@ body {
   width: 100vw;
   height: calc(100vh - 48px - 2px);
   position: relative;
+  /* 
+  Checkboard pattern
+  https://stackoverflow.com/a/51054396/5166365
+  */
   background-image: /* tint image */ linear-gradient(
       to right,
       rgba(192, 192, 192, 0.75),
