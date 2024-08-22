@@ -42,8 +42,10 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@types/body-parser": "^1.19.5",
     "@types/uuid": "^10.0.0",
     "async-mutex": "^0.5.0",
+    "body-parser": "^1.20.2",
     "electron-squirrel-startup": "^1.0.1",
     "express": "^4.19.2",
     "image-js": "^0.35.6",

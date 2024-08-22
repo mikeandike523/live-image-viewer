@@ -15,7 +15,21 @@ function app() {
     elemEndpointDisplay.textContent = `http://localhost:${port}/pixels`;
   }
 
+  function onImageData(
+    event: IpcRendererEvent,
+    data: {
+      name: string;
+      width: number;
+      height: number;
+      src: string;
+      scaleMode: "fit-preserve-aspect" | "unchanged";
+    }
+  ) {
+    console.log(data);
+  }
+
   electron.ipcRenderer.on("express-port-found", onExpressPortFound);
+  electron.ipcRenderer.on("image-data", onImageData);
 }
 
 document.addEventListener("DOMContentLoaded", app);

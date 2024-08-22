@@ -2,7 +2,16 @@ import { app, BrowserWindow, screen } from "electron";
 import express, { Express } from "express";
 import fs from "fs";
 import path from "path";
-import { ColorModel, Image } from "image-js";
+import { Image } from "image-js";
+import bodyParser from "body-parser";
+
+enum ColorModel {
+  GREY = 'GREY',
+  RGB = 'RGB',
+  HSL = 'HSL',
+  HSV = 'HSV',
+  CMYK = 'CMYK',
+}
 
 const portFilePath = path.join(process.cwd(), ".liv-port");
 
@@ -50,14 +59,18 @@ const activeImageData: ImageData = {
 const createExpressServer = async (): Promise<void> => {
   const expressApp = express();
 
+  expressApp.use(bodyParser.json());
+
   // A route meant for clients to upload images as pixel data
   // It is called /pixels instead of /upload since it
   // is not uploading a file, just uploading pixel data
   // This is why a name is needed as it cannot be derived from
   // a file path
-  expressApp.post("/pixels/begin", async (req, res) => {
+  expressApp.post("/pixels/begin", (req, res) => {
     if (typeof req.body !== "object" || req.body === null) {
-      return res.status(400).send("Request body must be an object");
+      return res.status(400).json({
+        message: "Request body must be an object",
+      });
     }
     if (
       typeof req.body.name !== "string" ||
@@ -66,16 +79,15 @@ const createExpressServer = async (): Promise<void> => {
       typeof req.body.channels !== "number" ||
       typeof req.body.scaleMode !== "string"
     ) {
-      return res
-        .status(400)
-        .send(
-          "Request body must contain 'name', 'width', 'height', and 'channels' properties"
-        );
+      return res.status(400).json({
+        message:
+          "Request body must contain 'name', 'width', 'height', and 'channels' properties",
+      });
     }
     if (!scaleModes.includes(req.body.scaleMode as ScaleMode)) {
-      return res
-        .status(400)
-        .send(`Invalid scale mode. Must be one of: ${scaleModes.join(", ")}`);
+      return res.status(400).json({
+        message: `Invalid scale mode. Must be one of: ${scaleModes.join(", ")}`,
+      });
     }
     const reqObject = req.body as {
       name: string;
@@ -91,6 +103,7 @@ const createExpressServer = async (): Promise<void> => {
     activeImageData.channels = reqObject.channels;
     activeImageData.data = new Uint8ClampedArray(dataLength).fill(0);
     activeImageData.scaleMode = reqObject.scaleMode;
+    return res.status(204).end();
   });
 
   function getImageSrc() {
@@ -108,7 +121,7 @@ const createExpressServer = async (): Promise<void> => {
       alpha: channels === 4 ? 1 : 0,
     });
     image.data.set(activeImageData.data);
-    return image.toDataURL("image/png")
+    return image.toDataURL("image/png");
   }
 
   function showImage() {
@@ -116,18 +129,18 @@ const createExpressServer = async (): Promise<void> => {
     const width = activeImageData.width;
     const height = activeImageData.height;
     const name = activeImageData.name;
-    const scaleMode = activeImageData.scaleMode
-    if(globalMainWindow) {
+    const scaleMode = activeImageData.scaleMode;
+    if (globalMainWindow) {
       try {
         globalMainWindow.webContents.send("image-data", {
           src,
           width,
           height,
           name,
-          scaleMode
-        })
-      }catch(error) {
-        console.error("Could send image data over IPC", error)
+          scaleMode,
+        });
+      } catch (error) {
+        console.error("Could send image data over IPC", error);
       }
     }
 
@@ -136,7 +149,7 @@ const createExpressServer = async (): Promise<void> => {
     // hopefull, requires testing
   }
 
-  expressApp.post("/pixels/put", async (req, res) => {
+  expressApp.post("/pixels/put", (req, res) => {
     if (typeof req.body !== "object" || req.body === null) {
       return res.status(400).send("Request body must be an object");
     }
@@ -165,12 +178,10 @@ const createExpressServer = async (): Promise<void> => {
           "Attempted to write data out of bounds of array constructed from the width, height, and #channels information"
         );
     }
-    res.status(200).json({
-      startIndex: startIndex + bytes.length,
-    });
+    res.status(204).end();
   });
 
-  expressApp.post("/show", async (req, res) => {
+  expressApp.get("/pixels/show", (req, res) => {
     showImage();
     res.status(204).end();
   });
