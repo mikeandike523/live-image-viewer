@@ -46,6 +46,7 @@
     "async-mutex": "^0.5.0",
     "electron-squirrel-startup": "^1.0.1",
     "express": "^4.19.2",
+    "image-js": "^0.35.6",
     "path-browserify": "^1.0.1",
     "uuid": "^10.0.0"
   }

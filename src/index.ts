@@ -2,6 +2,7 @@ import { app, BrowserWindow, screen } from "electron";
 import express, { Express } from "express";
 import fs from "fs";
 import path from "path";
+import { ColorModel, Image } from "image-js";
 
 const portFilePath = path.join(process.cwd(), ".liv-port");
 
@@ -92,8 +93,47 @@ const createExpressServer = async (): Promise<void> => {
     activeImageData.scaleMode = reqObject.scaleMode;
   });
 
-  function onLoadFinished() {
-    // update the UI -- send IPC to renderer process
+  function getImageSrc() {
+    const width = activeImageData.width;
+    const height = activeImageData.height;
+    const channels = activeImageData.channels;
+
+    const image = new Image(width, height, {
+      colorModel:
+        channels === 4
+          ? ColorModel.RGB
+          : channels === 3
+          ? ColorModel.RGB
+          : ColorModel.GREY,
+      alpha: channels === 4 ? 1 : 0,
+    });
+    image.data.set(activeImageData.data);
+    return image.toDataURL("image/png")
+  }
+
+  function showImage() {
+    const src = getImageSrc();
+    const width = activeImageData.width;
+    const height = activeImageData.height;
+    const name = activeImageData.name;
+    const scaleMode = activeImageData.scaleMode
+    if(globalMainWindow) {
+      try {
+        globalMainWindow.webContents.send("image-data", {
+          src,
+          width,
+          height,
+          name,
+          scaleMode
+        })
+      }catch(error) {
+        console.error("Could send image data over IPC", error)
+      }
+    }
+
+    // send the info to the renderer process via IPC
+    // It may be slow, but it is expected that IPC will not FAIL on large data
+    // hopefull, requires testing
   }
 
   expressApp.post("/pixels/put", async (req, res) => {
@@ -125,13 +165,14 @@ const createExpressServer = async (): Promise<void> => {
           "Attempted to write data out of bounds of array constructed from the width, height, and #channels information"
         );
     }
-    if (endIndex === activeImageData.data.length) {
-      onLoadFinished();
-      return res.status(204).end();
-    }
     res.status(200).json({
       startIndex: startIndex + bytes.length,
     });
+  });
+
+  expressApp.post("/show", async (req, res) => {
+    showImage();
+    res.status(204).end();
   });
 
   expressServer = expressApp.listen(0, () => {
@@ -193,7 +234,7 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
-  reportPort = false
+  reportPort = false;
 });
 
 app.on("activate", () => {
