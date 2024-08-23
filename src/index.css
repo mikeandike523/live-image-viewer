@@ -76,4 +76,14 @@ body {
     linear-gradient(to bottom, black 50%, white 50%);
   background-blend-mode: normal, difference, normal;
   background-size: 2em 2em;
+  position: relative;
+  overflow: hidden;
+}
+
+.Image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* start with none until first valid image */
+  display: none;
 }

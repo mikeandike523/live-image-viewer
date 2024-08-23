@@ -34,6 +34,7 @@ def send_image(name: str, pixels: np.ndarray, port: Optional[int] = None):
             "height": pixels.shape[0],
             "scaleMode": "fit-preserve-aspect",
         },
+        timeout=30
     )
 
     byte_chunks = []
@@ -58,11 +59,12 @@ def send_image(name: str, pixels: np.ndarray, port: Optional[int] = None):
             endpoint + "/put",
             json={
                 "offset": offset,
-                "bytes": base64.b64encode(byte_chunk).decode("utf-8"),
+                "bytesBase64": base64.b64encode(byte_chunk).decode("utf-8"),
             },
+            timeout=30
         )
         offset += len(byte_chunk)
 
     print("requesting show...")
 
-    requests.get(endpoint + "/show")
+    requests.get(endpoint + "/show", timeout=30)

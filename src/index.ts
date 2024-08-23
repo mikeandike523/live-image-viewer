@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen } from "electron";
+import { app, BrowserWindow, ipcMain, screen } from "electron";
 import express, { Express } from "express";
 import fs from "fs";
 import path from "path";
@@ -6,11 +6,11 @@ import { Image } from "image-js";
 import bodyParser from "body-parser";
 
 enum ColorModel {
-  GREY = 'GREY',
-  RGB = 'RGB',
-  HSL = 'HSL',
-  HSV = 'HSV',
-  CMYK = 'CMYK',
+  GREY = "GREY",
+  RGB = "RGB",
+  HSL = "HSL",
+  HSV = "HSV",
+  CMYK = "CMYK",
 }
 
 const portFilePath = path.join(process.cwd(), ".liv-port");
@@ -55,6 +55,92 @@ const activeImageData: ImageData = {
   scaleMode: "fit-preserve-aspect",
 };
 
+let hasRenderedImage = false;
+
+function dataToRGBAData(
+  data: Uint8ClampedArray,
+  initChannels: number,
+  defaultAlpha = 255
+): Uint8ClampedArray {
+  if (![1, 3, 4].includes(initChannels)) {
+    throw new Error(
+      `Invalid number of channels: ${initChannels}. Must be 1, 3, or 4.`
+    );
+  }
+  const singleChannelLength = data.length / initChannels;
+  const resultData = new Uint8ClampedArray(data.length * 4);
+  const rData = new Uint8ClampedArray(singleChannelLength).fill(0);
+  const gData = new Uint8ClampedArray(singleChannelLength).fill(0);
+  const bData = new Uint8ClampedArray(singleChannelLength).fill(0);
+  const aData = new Uint8ClampedArray(singleChannelLength).fill(defaultAlpha);
+  if (initChannels == 3 || initChannels === 4) {
+    for (let i = 0; i < singleChannelLength; i++) {
+      const initR = data[i * initChannels];
+      const initG = data[i * initChannels + 1];
+      const initB = data[i * initChannels + 2];
+      rData[i] = initR;
+      gData[i] = initG;
+      bData[i] = initB;
+      if (initChannels === 4) {
+        const initA = data[i * initChannels + 3];
+        aData[i] = initA;
+      }
+    }
+  }
+  if (initChannels === 1) {
+    rData.set(data);
+    gData.set(data);
+    bData.set(data);
+  }
+
+  for (let i = 0; i < singleChannelLength; i++) {
+    resultData[i * 4] = rData[i];
+    resultData[i * 4 + 1] = gData[i];
+    resultData[i * 4 + 2] = bData[i];
+    resultData[i * 4 + 3] = aData[i];
+  }
+
+  return resultData;
+}
+
+function getImageSrc() {
+  const width = activeImageData.width;
+  const height = activeImageData.height;
+  const channels = activeImageData.channels;
+
+  const image = new Image(width, height, {
+    colorModel: ColorModel.RGB,
+    alpha: 1,
+  });
+
+  image.data.set(dataToRGBAData(activeImageData.data, channels));
+  return image.toDataURL("image/png");
+}
+
+function showImage() {
+  const src = getImageSrc();
+  const width = activeImageData.width;
+  const height = activeImageData.height;
+  const name = activeImageData.name;
+  const scaleMode = activeImageData.scaleMode;
+
+  if (globalMainWindow) {
+    try {
+      hasRenderedImage = true;
+
+      globalMainWindow.webContents.send("image-data", {
+        src,
+        width,
+        height,
+        name,
+        scaleMode,
+      });
+    } catch (error) {
+      console.error("Could send image data over IPC", error);
+    }
+  }
+}
+
 // Create the Express server
 const createExpressServer = async (): Promise<void> => {
   const expressApp = express();
@@ -67,6 +153,7 @@ const createExpressServer = async (): Promise<void> => {
   // This is why a name is needed as it cannot be derived from
   // a file path
   expressApp.post("/pixels/begin", (req, res) => {
+    hasRenderedImage = false;
     if (typeof req.body !== "object" || req.body === null) {
       return res.status(400).json({
         message: "Request body must be an object",
@@ -105,49 +192,6 @@ const createExpressServer = async (): Promise<void> => {
     activeImageData.scaleMode = reqObject.scaleMode;
     return res.status(204).end();
   });
-
-  function getImageSrc() {
-    const width = activeImageData.width;
-    const height = activeImageData.height;
-    const channels = activeImageData.channels;
-
-    const image = new Image(width, height, {
-      colorModel:
-        channels === 4
-          ? ColorModel.RGB
-          : channels === 3
-          ? ColorModel.RGB
-          : ColorModel.GREY,
-      alpha: channels === 4 ? 1 : 0,
-    });
-    image.data.set(activeImageData.data);
-    return image.toDataURL("image/png");
-  }
-
-  function showImage() {
-    const src = getImageSrc();
-    const width = activeImageData.width;
-    const height = activeImageData.height;
-    const name = activeImageData.name;
-    const scaleMode = activeImageData.scaleMode;
-    if (globalMainWindow) {
-      try {
-        globalMainWindow.webContents.send("image-data", {
-          src,
-          width,
-          height,
-          name,
-          scaleMode,
-        });
-      } catch (error) {
-        console.error("Could send image data over IPC", error);
-      }
-    }
-
-    // send the info to the renderer process via IPC
-    // It may be slow, but it is expected that IPC will not FAIL on large data
-    // hopefull, requires testing
-  }
 
   expressApp.post("/pixels/put", (req, res) => {
     if (typeof req.body !== "object" || req.body === null) {
@@ -188,7 +232,7 @@ const createExpressServer = async (): Promise<void> => {
 
   expressServer = expressApp.listen(0, () => {
     const port = (expressServer!.address() as { port: number }).port;
-    console.log(`Server listening at http://localhost:${port}`);
+    console.info(`Server listening at http://localhost:${port}`);
     fs.writeFileSync(portFilePath, port.toString());
     globalReportInterval = setInterval(() => {
       if (globalMainWindow && reportPort) {
@@ -224,8 +268,11 @@ const createWindow = (): void => {
   // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
 
-  // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
+  ipcMain.on("frontend-app-loaded", (event, hasLoaded) => {
+    if (hasRenderedImage && hasLoaded) {
+      showImage();
+    }
+  });
 };
 
 // Wait for both the Express server and Electron to be ready
@@ -261,7 +308,7 @@ app.on("before-quit", () => {
   // Close the Express server
   if (expressServer) {
     expressServer.close(() => {
-      console.log("Express server closed");
+      console.info("Express server closed");
     });
   }
   if (globalReportInterval) {

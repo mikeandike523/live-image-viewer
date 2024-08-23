@@ -15,7 +15,10 @@ def main():
             dist = np.sqrt(dx**2 + dy**2)
             if dist < 250:
                 data[y, x] = np.uint8(255 * (1 - dist / 250))
+    
     send_image("test1",data)
+
+
 
 if __name__ == "__main__":
     main()
