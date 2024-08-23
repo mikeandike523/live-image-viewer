@@ -28,36 +28,7 @@ function app() {
   function getScaleToFitViewer(initWidth: number, initHeight: number) {
     const scaleX = ivWidth / initWidth;
     const scaleY = ivHeight / initHeight;
-    const isLandscape = initWidth >= initHeight;
-
-    const scalingOptions = [];
-
-    if (isLandscape) {
-      // prefer to try scaling X first
-      scalingOptions.push(scaleX);
-      scalingOptions.push(scaleY);
-    } else {
-      // prefer to try scaling Y first
-      scalingOptions.push(scaleY);
-      scalingOptions.push(scaleX);
-    }
-
-    let scaleFactor: number | undefined = undefined;
-
-    for (const scale of scalingOptions) {
-      const newWidth = initWidth * scale;
-      const newHeight = initHeight * scale;
-      if (newWidth <= ivWidth && newHeight <= ivHeight) {
-        scaleFactor = scale;
-        break;
-      }
-    }
-
-    if (typeof scaleFactor === "undefined") {
-      throw new Error("No valid scaling factor to fit image viewer");
-    }
-
-    return scaleFactor;
+    return Math.min(scaleX, scaleY);
   }
 
   function imagePosDimenToViewerPosDimen(
@@ -105,7 +76,7 @@ function app() {
     elemImage.style.left = imageLeft.toString() + "px";
     elemImage.style.top = imageTop.toString() + "px";
     elemImage.style.width = imageCssW.toString() + "px";
-    elemImage.style.height = imageCssW.toString() + "px";
+    elemImage.style.height = imageCssH.toString() + "px";
     elemImage.style.display = "block";
     elemImage.src = data.src;
   }

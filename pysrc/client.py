@@ -43,13 +43,14 @@ def send_image(name: str, pixels: np.ndarray, port: Optional[int] = None):
 
     cursor = 0
 
-    pixel_bytes = pixels.tobytes()
+    pixel_bytes = bytes(list(np.ravel(pixels)))
 
-    while cursor < pixels.nbytes:
+    while cursor < len(pixel_bytes):
+        data_chunk = pixel_bytes[cursor : min(cursor + BYTE_CHUNK_SIZE, len(pixel_bytes))]
         byte_chunks.append(
-            pixel_bytes[cursor : min(cursor + BYTE_CHUNK_SIZE, len(pixel_bytes))]
+            data_chunk
         )
-        cursor += BYTE_CHUNK_SIZE
+        cursor += len(data_chunk)
 
     offset = 0
 

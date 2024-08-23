@@ -2,4 +2,6 @@
 
 dn="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 
-cd "$dn" && yarn start
+p="$(pwd)"
+
+cd "$dn" && export CALL_DIR="$p" && yarn start

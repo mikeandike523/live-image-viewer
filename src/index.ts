@@ -4,6 +4,13 @@ import fs from "fs";
 import path from "path";
 import { Image } from "image-js";
 import bodyParser from "body-parser";
+import { channel } from "diagnostics_channel";
+
+let callCwd = process.cwd();
+
+if(process.env.CALL_DIR){
+  callCwd = process.env.CALL_DIR
+}
 
 enum ColorModel {
   GREY = "GREY",
@@ -13,7 +20,7 @@ enum ColorModel {
   CMYK = "CMYK",
 }
 
-const portFilePath = path.join(process.cwd(), ".liv-port");
+const portFilePath = path.join(callCwd, ".liv-port");
 
 let globalMainWindow: BrowserWindow | null = null;
 let globalReportInterval: NodeJS.Timeout | null = null;
@@ -67,8 +74,8 @@ function dataToRGBAData(
       `Invalid number of channels: ${initChannels}. Must be 1, 3, or 4.`
     );
   }
-  const singleChannelLength = data.length / initChannels;
-  const resultData = new Uint8ClampedArray(data.length * 4);
+  const singleChannelLength = Math.floor(data.length / initChannels);
+  const resultData = new Uint8ClampedArray(singleChannelLength * 4);
   const rData = new Uint8ClampedArray(singleChannelLength).fill(0);
   const gData = new Uint8ClampedArray(singleChannelLength).fill(0);
   const bData = new Uint8ClampedArray(singleChannelLength).fill(0);
@@ -112,6 +119,8 @@ function getImageSrc() {
     colorModel: ColorModel.RGB,
     alpha: 1,
   });
+
+  console.log(image.data.length,dataToRGBAData(activeImageData.data, channels).length)
 
   image.data.set(dataToRGBAData(activeImageData.data, channels));
   return image.toDataURL("image/png");
@@ -183,6 +192,7 @@ const createExpressServer = async (): Promise<void> => {
       channels: number;
       scaleMode: ScaleMode;
     };
+    console.log(reqObject.channels)
     const dataLength = reqObject.width * reqObject.height * reqObject.channels;
     activeImageData.name = reqObject.name;
     activeImageData.width = reqObject.width;
@@ -211,17 +221,13 @@ const createExpressServer = async (): Promise<void> => {
       offset: number;
       bytesBase64: string;
     };
-    const bytes = Buffer.from(reqObject.bytesBase64, "base64");
+    const bytes = new Uint8ClampedArray(Buffer.from(reqObject.bytesBase64, "base64"));
     const startIndex = reqObject.offset;
-    activeImageData.data.set(new Uint8ClampedArray(bytes), startIndex);
-    const endIndex = startIndex + bytes.length;
-    if (endIndex > activeImageData.data.length) {
-      return res
-        .status(400)
-        .send(
-          "Attempted to write data out of bounds of array constructed from the width, height, and #channels information"
-        );
-    }
+    const endIndex = Math.min(activeImageData.data.length,startIndex + bytes.length);
+    const numBytes = Math.min(bytes.length, endIndex - startIndex);
+    const bytesSubset = bytes.slice(0, numBytes);
+    console.log(bytes.length,startIndex,endIndex,numBytes,activeImageData.data.length, bytesSubset.length);
+    activeImageData.data.set(bytesSubset, startIndex);
     res.status(204).end();
   });
 
